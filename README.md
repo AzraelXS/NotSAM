@@ -1,4 +1,4 @@
-Hello world!
+Hello, World!
 
 We're going to be building a code-generating instruction-following tool-calling metacognitive AI agent.
 
