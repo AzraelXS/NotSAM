@@ -1,0 +1,14 @@
+anthropic
+fastapi
+uvicorn
+python-dotenv
+requests
+urllib3
+mcp>=1.0.0
+websockets>=11.0.0
+httpx>=0.24.0
+pyautogui
+keyboard
+mouse
+pillow
+psutil
