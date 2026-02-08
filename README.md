@@ -22,6 +22,11 @@
 - Advanced immune system protections
 - Production-grade security hardening
 - Robust prompt injection defenses
+- Vision model integration
+- Image generator integration
+- Sesame CSM voice generation
+- OpenAI Whisper user voice transcription
+- AceStep 1.5 Music Generator
 - Several other safety-critical components
 
 ### Security Warning:
