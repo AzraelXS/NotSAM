@@ -27,6 +27,7 @@
 - Sesame CSM voice generation
 - OpenAI Whisper user voice transcription
 - AceStep 1.5 Music Generator
+- Electron-based front-end for multimodal interactions (Claude Desktop-style UI)
 - Several other safety-critical components
 
 ### Security Warning:
@@ -75,5 +76,95 @@ This demo exists to show what's already possible with **limited, local instructi
 ## About SAM's Creator
 
 This demo system, and the full SAM was created by Azrael, an autistic adult with ADHD, time blindness, and dyscalculia who was told that he couldn't do these things, because he sucks at math.
+
+---
+
+## 🛠️ Setup & Requirements
+
+### Basic Ingredients
+
+To run NotSAM with full capabilities, you'll need the following components:
+
+#### Required for Core Operation:
+- **Python 3.8+** with required packages (see `requirements.txt`)
+- **LM Studio** or compatible OpenAI-compatible API endpoint for local LLM inference
+
+#### Required for Memory & Semantic Search:
+- **Elasticsearch** (single-node cluster minimum)
+  - Provides long-term and short-term memory storage
+  - Enables semantic search capabilities with vector embeddings
+  - Without this, the agent will have no persistent memory between sessions
+
+#### Optional but Recommended:
+- **SearXNG** instance (VM or container)
+  - Required for web search capabilities
+  - Must be accessible via HTTP/HTTPS
+
+- **MCP Servers for Web Browsing**
+  - For safe web browsing and page interaction, use well-supported MCP servers
+  - Recommended: **Microsoft's Playwright MCP Server**
+  - Provides browser automation and page interaction without direct prompt injection risks
+
+### Configuration Steps
+
+Edit `config.json` to configure your environment:
+
+#### 1. User Information
+```json
+"user": {
+  "name": "YourName",
+  "location": "Your City",
+  "timezone": "Your/Timezone"
+}
+```
+
+#### 2. Elasticsearch Configuration
+```json
+"elasticsearch": {
+  "enabled": true,
+  "host": "https://your-elasticsearch-host:9200",
+  "username": "elastic",
+  "password": "your-elasticsearch-password-here",
+  "verify_ssl": false
+}
+```
+
+- Set `host` to your Elasticsearch endpoint URI
+- Provide your Elasticsearch username and password
+- Set `verify_ssl` to `true` if using valid SSL certificates
+
+#### 3. SearXNG Configuration (if using web search)
+```json
+"searxng": {
+  "enabled": true,
+  "base_url": "http://your-searxng-host/searxng",
+  "language": "en"
+}
+```
+
+- Set `base_url` to your SearXNG instance URL
+- Set `enabled` to `false` if not using web search
+
+#### 4. LLM Provider Configuration
+```json
+"providers": {
+  "lmstudio": {
+    "base_url": "http://your-lmstudio-host:1234/v1",
+    "api_key": "lm-studio",
+    "model_name": "your-model-name"
+  }
+}
+```
+
+- Update `base_url` to point to your LM Studio instance
+- Set the appropriate `model_name` for your loaded model
+
+### Quick Start
+
+1. Install dependencies: `pip install -r requirements.txt`
+2. Configure `config.json` with your settings
+3. Ensure Elasticsearch is running and accessible
+4. (Optional) Ensure SearXNG is running if you want web search
+5. Run: `python sam_agent.py`
 
 ---
