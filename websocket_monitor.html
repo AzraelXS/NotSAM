@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAM WebSocket Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .status-bar {
+            background: white;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #44ff44;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .panel h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+            font-size: 1.2em;
+        }
+
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+        }
+
+        .log-entry {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+            background: #f8f9fa;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .log-entry.tool-start {
+            border-left-color: #4CAF50;
+        }
+
+        .log-entry.tool-end {
+            border-left-color: #2196F3;
+        }
+
+        .log-entry.system2 {
+            border-left-color: #FF9800;
+        }
+
+        .log-entry.system3 {
+            border-left-color: #9C27B0;
+        }
+
+        .log-entry.autonomous {
+            border-left-color: #00BCD4;
+        }
+
+        .log-entry .timestamp {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .log-entry .type {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .log-entry .details {
+            margin-top: 5px;
+            color: #555;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-right: 10px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* Approval Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .approval-modal {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .modal-header h2 {
+            color: #667eea;
+            margin: 0;
+            font-size: 1.5em;
+        }
+
+        .modal-icon {
+            font-size: 2.5em;
+        }
+
+        .tool-details {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .tool-details h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .tool-param {
+            margin: 10px 0;
+        }
+
+        .tool-param-name {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .tool-param-value {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .approval-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn-approve {
+            background: #28a745;
+            color: white;
+            padding: 12px 30px;
+            font-size: 1.1em;
+        }
+
+        .btn-approve:hover {
+            background: #218838;
+        }
+
+        .btn-deny {
+            background: #dc3545;
+            color: white;
+            padding: 12px 30px;
+            font-size: 1.1em;
+        }
+
+        .btn-deny:hover {
+            background: #c82333;
+        }
+
+        .btn-stop {
+            background: #ffc107;
+            color: #333;
+            padding: 12px 30px;
+            font-size: 1.1em;
+        }
+
+        .btn-stop:hover {
+            background: #e0a800;
+        }
+
+        .approval-timer {
+            text-align: center;
+            color: #666;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 SAM WebSocket Monitor</h1>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Disconnected</span>
+            </div>
+            <div>
+                <span id="messageCount">Messages: 0</span>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="panel">
+                <h2>📊 Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="toolCallCount">0</div>
+                        <div class="stat-label">Tool Calls</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="system2Count">0</div>
+                        <div class="stat-label">System 2 Events</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="system3Count">0</div>
+                        <div class="stat-label">System 3 Events</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="autonomousCount">0</div>
+                        <div class="stat-label">Autonomous Events</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>🔧 Recent Tool Calls</h2>
+                <div class="log-container" id="toolLog"></div>
+            </div>
+
+            <div class="panel">
+                <h2>🧠 System 2/3 Activity</h2>
+                <div class="log-container" id="systemLog"></div>
+            </div>
+
+            <div class="panel">
+                <h2>🌙 Autonomous Activity</h2>
+                <div class="log-container" id="autonomousLog"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <h2>Controls</h2>
+            <button class="btn btn-primary" onclick="connect()">Connect</button>
+            <button class="btn btn-secondary" onclick="disconnect()">Disconnect</button>
+            <button class="btn btn-secondary" onclick="clearLogs()">Clear Logs</button>
+        </div>
+
+        <div class="panel" style="margin-top: 20px;">
+            <h2>📝 Raw Message Log</h2>
+            <div class="log-container" id="rawLog"></div>
+        </div>
+    </div>
+
+    <!-- Approval Modal -->
+    <div class="modal-overlay" id="approvalModal">
+        <div class="approval-modal">
+            <div class="modal-header">
+                <div class="modal-icon">🛡️</div>
+                <h2>Tool Approval Required</h2>
+            </div>
+            
+            <div class="tool-details">
+                <h3 id="modalToolName">Tool Name</h3>
+                <div id="modalToolInfo" style="margin-bottom: 15px; color: #666;"></div>
+                
+                <div id="modalArguments"></div>
+            </div>
+            
+            <div class="approval-buttons">
+                <button class="btn btn-approve" onclick="respondToApproval('approve')">
+                    ✅ Approve
+                </button>
+                <button class="btn btn-deny" onclick="respondToApproval('deny')">
+                    ❌ Deny
+                </button>
+                <button class="btn btn-stop" onclick="respondToApproval('stop')">
+                    🛑 Stop SAM
+                </button>
+            </div>
+            
+            <div class="approval-timer" id="approvalTimer"></div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let messageCount = 0;
+        let stats = {
+            toolCalls: 0,
+            system2: 0,
+            system3: 0,
+            autonomous: 0
+        };
+        
+        // Approval tracking
+        let currentApprovalRequest = null;
+        let approvalTimerInterval = null;
+        let approvalStartTime = null;
+
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const messageCountEl = document.getElementById('messageCount');
+        const toolLog = document.getElementById('toolLog');
+        const systemLog = document.getElementById('systemLog');
+        const autonomousLog = document.getElementById('autonomousLog');
+        const rawLog = document.getElementById('rawLog');
+        const approvalModal = document.getElementById('approvalModal');
+
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log('Already connected');
+                return;
+            }
+
+            ws = new WebSocket('ws://localhost:8765');
+
+            ws.onopen = () => {
+                console.log('Connected to SAM WebSocket');
+                statusDot.classList.add('connected');
+                statusText.textContent = 'Connected';
+            };
+
+            ws.onclose = () => {
+                console.log('Disconnected from SAM WebSocket');
+                statusDot.classList.remove('connected');
+                statusText.textContent = 'Disconnected';
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    handleMessage(message);
+                } catch (error) {
+                    console.error('Error parsing message:', error);
+                }
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function handleMessage(message) {
+            messageCount++;
+            messageCountEl.textContent = `Messages: ${messageCount}`;
+
+            // Add to raw log
+            addRawLog(message);
+
+            // Handle by type
+            switch (message.type) {
+                case 'tool_call_start':
+                    handleToolCallStart(message);
+                    break;
+                case 'tool_call_end':
+                    handleToolCallEnd(message);
+                    break;
+                case 'tool_call_result':
+                    handleToolCallResult(message);
+                    break;
+                case 'system2_intervention':
+                    handleSystem2(message);
+                    break;
+                case 'system3_evaluation':
+                case 'system3_intervention':
+                    handleSystem3(message);
+                    break;
+                case 'autonomous_activity':
+                    handleAutonomous(message);
+                    break;
+                case 'agent_status':
+                    handleAgentStatus(message);
+                    break;
+                case 'approval_request':
+                    handleApprovalRequest(message);
+                    break;
+            }
+        }
+
+        function handleApprovalRequest(message) {
+            console.log('📨 Approval request received:', message.data);
+            currentApprovalRequest = message.data;
+            approvalStartTime = Date.now();
+            
+            // Show modal
+            document.getElementById('modalToolName').textContent = `🔧 ${message.data.tool_name}`;
+            
+            // Show tool info if available
+            const toolInfo = message.data.tool_info;
+            let infoHtml = '';
+            if (toolInfo) {
+                if (toolInfo.category) infoHtml += `📂 Category: ${toolInfo.category}<br>`;
+                if (toolInfo.description) infoHtml += `📄 ${toolInfo.description}<br>`;
+                if (toolInfo.requires_approval) infoHtml += `🛡️ Requires Approval: Yes`;
+            }
+            document.getElementById('modalToolInfo').innerHTML = infoHtml;
+            
+            // Show arguments
+            const argsContainer = document.getElementById('modalArguments');
+            argsContainer.innerHTML = '';
+            
+            const args = message.data.arguments;
+            for (const [key, value] of Object.entries(args)) {
+                const paramDiv = document.createElement('div');
+                paramDiv.className = 'tool-param';
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'tool-param-name';
+                nameDiv.textContent = key;
+                
+                const valueDiv = document.createElement('div');
+                valueDiv.className = 'tool-param-value';
+                
+                // Format value based on type
+                if (typeof value === 'object') {
+                    valueDiv.textContent = JSON.stringify(value, null, 2);
+                } else {
+                    valueDiv.textContent = String(value);
+                }
+                
+                paramDiv.appendChild(nameDiv);
+                paramDiv.appendChild(valueDiv);
+                argsContainer.appendChild(paramDiv);
+            }
+            
+            // Show modal
+            approvalModal.classList.add('active');
+            
+            // Start timer
+            startApprovalTimer();
+            
+            // Play sound/notification if available
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('SAM Tool Approval Required', {
+                    body: `Tool: ${message.data.tool_name}`,
+                    icon: '🛡️'
+                });
+            }
+        }
+
+        function startApprovalTimer() {
+            const timerEl = document.getElementById('approvalTimer');
+            
+            if (approvalTimerInterval) {
+                clearInterval(approvalTimerInterval);
+            }
+            
+            approvalTimerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - approvalStartTime) / 1000);
+                const remaining = Math.max(0, 60 - elapsed);
+                
+                timerEl.textContent = `Timeout in ${remaining} seconds`;
+                
+                if (remaining === 0) {
+                    clearInterval(approvalTimerInterval);
+                    timerEl.textContent = 'Request timed out';
+                }
+            }, 1000);
+        }
+
+        function respondToApproval(response) {
+            if (!currentApprovalRequest) {
+                console.error('No approval request to respond to');
+                return;
+            }
+            
+            console.log(`📤 Sending approval response: ${response}`);
+            
+            // Send response to SAM
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'approval_response',
+                    request_id: currentApprovalRequest.request_id,
+                    response: response
+                }));
+            }
+            
+            // Hide modal
+            approvalModal.classList.remove('active');
+            
+            // Clear timer
+            if (approvalTimerInterval) {
+                clearInterval(approvalTimerInterval);
+                approvalTimerInterval = null;
+            }
+            
+            // Clear current request
+            currentApprovalRequest = null;
+            approvalStartTime = null;
+            
+            // Show notification
+            showNotification(`Approval response sent: ${response}`);
+        }
+
+        function handleToolCallStart(message) {
+            stats.toolCalls++;
+            updateStats();
+            addLogEntry(toolLog, 'tool-start', `🔧 ${message.data.tool_name}`, 
+                `Arguments: ${JSON.stringify(message.data.arguments)}`, message.timestamp);
+        }
+
+        function handleToolCallEnd(message) {
+            const status = message.data.success ? '✅' : '❌';
+            addLogEntry(toolLog, 'tool-end', `${status} ${message.data.tool_name}`, 
+                `Duration: ${message.data.duration.toFixed(2)}s${message.data.error ? ` | Error: ${message.data.error}` : ''}`, 
+                message.timestamp);
+        }
+
+        function handleToolCallResult(message) {
+            addLogEntry(toolLog, 'tool-end', `📊 ${message.data.tool_name} Result`, 
+                `${JSON.stringify(message.data.result).substring(0, 100)}...`, message.timestamp);
+        }
+
+        function handleSystem2(message) {
+            stats.system2++;
+            updateStats();
+            addLogEntry(systemLog, 'system2', `🧠 System 2: ${message.data.intervention_type}`, 
+                `Action: ${message.data.action}\n${message.data.details.message}`, message.timestamp);
+        }
+
+        function handleSystem3(message) {
+            stats.system3++;
+            updateStats();
+            if (message.type === 'system3_evaluation') {
+                const decision = message.data.decision === 'approve' ? '✅' : '❌';
+                addLogEntry(systemLog, 'system3', `🛡️ System 3: ${decision} ${message.data.tool_name}`, 
+                    `${message.data.reasoning} (Confidence: ${(message.data.confidence * 100).toFixed(0)}%)`, 
+                    message.timestamp);
+            } else {
+                addLogEntry(systemLog, 'system3', `🛡️ System 3 Intervention`, 
+                    JSON.stringify(message.data), message.timestamp);
+            }
+        }
+
+        function handleAutonomous(message) {
+            stats.autonomous++;
+            updateStats();
+            addLogEntry(autonomousLog, 'autonomous', `🌙 ${message.data.activity_type}`, 
+                JSON.stringify(message.data.details), message.timestamp);
+        }
+
+        function handleAgentStatus(message) {
+            addLogEntry(rawLog, 'status', `📡 Status: ${message.data.status}`, 
+                JSON.stringify(message.data.details), message.timestamp);
+        }
+
+        function addLogEntry(container, className, title, details, timestamp) {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${className}`;
+            
+            const time = new Date(timestamp).toLocaleTimeString();
+            entry.innerHTML = `
+                <div class="timestamp">${time}</div>
+                <div class="type">${title}</div>
+                <div class="details">${details}</div>
+            `;
+            
+            container.insertBefore(entry, container.firstChild);
+            
+            // Keep only last 50 entries
+            while (container.children.length > 50) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        function addRawLog(message) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const time = new Date(message.timestamp).toLocaleTimeString();
+            entry.innerHTML = `
+                <div class="timestamp">${time}</div>
+                <pre>${JSON.stringify(message, null, 2)}</pre>
+            `;
+            rawLog.insertBefore(entry, rawLog.firstChild);
+            
+            while (rawLog.children.length > 20) {
+                rawLog.removeChild(rawLog.lastChild);
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('toolCallCount').textContent = stats.toolCalls;
+            document.getElementById('system2Count').textContent = stats.system2;
+            document.getElementById('system3Count').textContent = stats.system3;
+            document.getElementById('autonomousCount').textContent = stats.autonomous;
+        }
+
+        function clearLogs() {
+            toolLog.innerHTML = '';
+            systemLog.innerHTML = '';
+            autonomousLog.innerHTML = '';
+            rawLog.innerHTML = '';
+            stats = {
+                toolCalls: 0,
+                system2: 0,
+                system3: 0,
+                autonomous: 0
+            };
+            updateStats();
+        }
+        
+        function showNotification(message) {
+            console.log('ℹ️', message);
+            // Could add toast notification here
+        }
+        
+        // Request notification permission on load
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Auto-connect on page load
+        window.onload = () => {
+            connect();
+        };
+
+        // Cleanup on page unload
+        window.onbeforeunload = () => {
+            if (ws) {
+                ws.close();
+            }
+        };
+    </script>
+</body>
+</html>

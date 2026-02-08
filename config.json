@@ -1,0 +1,236 @@
+{
+  "version": "1.0.0",
+  "provider": "lmstudio",
+
+  "user": {
+    "name": "User",
+    "location": "Nashville",
+    "timezone": "America/New_York"
+  },
+
+  "providers": {
+    "lmstudio": {
+      "base_url": "http://192.168.1.81:1234/v1",
+      "api_key": "lm-studio",
+      "model_name": "qwen2.5-coder-14b-instruct",
+      "timeout": 120,
+      "verify_ssl": false,
+      "context_limit": 15000,
+      "temperature": 0.3,
+      "max_tokens": 1500
+    },
+    "claude": {
+      "base_url": "https://api.anthropic.com/v1",
+      "api_key": "placeholder",
+      "model_name": "claude-sonnet-4-20250514",
+      "timeout": 300,
+      "verify_ssl": true,
+      "context_limit": 57000,
+      "temperature": 0.3,
+      "max_tokens": 8000
+    }
+  },
+
+  "agent": {
+    "safety_mode": true,
+    "auto_approve": false,
+    "max_iterations": 10,
+    "temperature": 0.3,
+    "reactive_planning": true,
+    "max_tools_per_batch": 1
+  },
+
+  "tools": {
+    "enabled": true,
+    "auto_approve": false,
+    "timeout": 30
+  },
+
+  "elasticsearch": {
+    "enabled": true,
+    "host": "https://192.168.1.187:9200",
+    "username": "elastic",
+    "password": "your-elasticsearch-password-here",
+    "verify_ssl": false,
+    "datastream_name": "sam-memories",
+    "max_results": 10,
+    "similarity_threshold": 0.75,
+    "index_template_name": "sam-memories-template"
+  },
+
+  "searxng": {
+    "enabled": true,
+    "base_url": "http://192.168.1.227/searxng",
+    "language": "en",
+    "min_score": 1.0,
+    "max_results": 5,
+    "timeout": 15,
+    "verify_ssl": false
+  },
+
+  "embeddings": {
+    "enabled": true,
+    "provider": "lmstudio",
+    "base_url": "http://192.168.1.81:1234/v1",
+    "model": "nomic-ai/nomic-embed-text-v1.5-GGUF",
+    "dimension": 768,
+    "timeout": 30,
+    "batch_size": 10
+  },
+
+  "email": {
+    "enabled": true,
+    "provider": "smtp",
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "smtp_username": "somegmailaddress@gmail.com",
+    "smtp_password": "a_gmail_app_password",
+    "smtp_use_tls": true,
+    "from_email": "sender@gmail.com",
+    "to_email": "afallback@gmail.com",
+    "reply_to": "replyaddress@gmail.com",
+    "notify_on_completion": true,
+    "notify_on_error": true,
+    "notify_on_approval": false,
+    "include_logs": false,
+    "timeout": 30
+  },
+
+  "mcp": {
+    "enabled": true,
+    "auto_discover": true,
+    "discovery_timeout": 30,
+    "connection_timeout": 60,
+    "max_concurrent_sessions": 5,
+    "servers": {
+      "playwright": {
+        "type": "stdio",
+        "path": "node",
+        "args": [
+          "@playwright/mcp",
+          "--browser=chrome",
+          "--headless",
+          "--no-sandbox",
+          "--timeout-navigation=60000",
+          "--timeout-action=10000",
+          "--viewport-size=1920x1080",
+          "--isolated"
+        ],
+        "description": "Playwright Chrome browser automation for web browsing",
+        "enabled": true
+      },
+      "shopify": {
+        "type": "stdio",
+        "path": "C:\\Program Files\\shopify-mcp\\.venv\\Scripts\\python.exe",
+        "args": ["C:\\Program Files\\shopify-mcp\\server.py"],
+        "description": "Shopify store management and operations",
+        "enabled": false
+      }
+    },
+    "default_server_paths": [
+      "./mcp_servers",
+      "~/.sam/mcp_servers"
+    ]
+  },
+
+  "logging": {
+    "level": "WARNING",
+    "console_enabled": true,
+    "file_enabled": true,
+    "file_path": "~/.sam/logs/sam.log",
+    "max_file_size": 10485760,
+    "backup_count": 5,
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "date_format": "%Y-%m-%d %H:%M:%S"
+  },
+
+  "api": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 8000,
+    "cors_enabled": true,
+    "cors_origins": ["*"],
+    "rate_limit": 100,
+    "timeout": 300
+  },
+
+  "plugins": {
+    "enabled": true,
+    "auto_load": true,
+    "plugin_dirs": [
+      "./plugins",
+      "~/.sam/plugins"
+    ],
+    "disabled_plugins": []
+  },
+
+  "system3": {
+    "enabled": false,
+    "use_claude": false,
+    "auto_enable": false,
+    "log_evaluations": true,
+    "require_approval_threshold": "moderate",
+    "evaluation_timeout": 30,
+    "max_retries": 2,
+    "fallback_decision": "reject"
+  },
+
+  "system2": {
+    "context_multiplier": 1.75,
+    "token_threshold": 0.45,
+    "startup_context_target": 0.08,
+    "proactive_rotation_threshold": 0.35,
+    "consecutive_tool_threshold": 6,
+    "stagnation_threshold": 8,
+    "error_rate_threshold": 0.4,
+    "prune_not_summarize": true,
+    "periodic_wakeup_interval": 2
+  },
+
+  "core_memories": {
+    "enabled": true,
+    "max_core_memories": 20,
+    "max_personal_memories": 15,
+    "max_experience_memories": 10,
+    "token_budget_percent": 0.06,
+    "refresh_interval": 10,
+    "include_in_system_prompt": true
+  },
+
+  "features": {
+    "dynamic_context_detection": true,
+    "use_loaded_context_length": true
+  },
+
+  "websocket": {
+    "enabled": true,
+    "host": "localhost",
+    "port": 8765,
+    "broadcast_tool_calls": true,
+    "broadcast_system2": true,
+    "broadcast_system3": true,
+    "broadcast_autonomous": true
+  },
+
+  "multi_agent_research": {
+    "enabled": false,
+    "test_mode": true,
+    "lead_agent_timeout": 300,
+    "fetcher_agent_timeout": 30,
+    "max_concurrent_fetchers": 5,
+    "max_results_per_search": 10,
+    "relevance_threshold": 0.7,
+    "temp_index_prefix": "web_research_"
+  },
+
+  "browser": {
+    "enabled": true,
+    "headless": true,
+    "timeout": 30,
+    "max_sessions": 5,
+    "window_width": 1920,
+    "window_height": 1080,
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "dismiss_popups": true
+  }
+}
